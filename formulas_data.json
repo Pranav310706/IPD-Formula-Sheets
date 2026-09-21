@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Pythagorean Identity",
+    "latex": "\\sin^2\\theta + \\cos^2\\theta = 1"
+  },
+  {
+    "name": "Tangent Identity",
+    "latex": "\\tan\\theta = \\frac{\\sin\\theta}{\\cos\\theta}"
+  },
+  {
+    "name": "Sine Addition Formula",
+    "latex": "\\sin(A+B) = \\sin A\\cos B + \\cos A\\sin B"
+  },
+  {
+    "name": "Cosine Addition Formula",
+    "latex": "\\cos(A+B) = \\cos A\\cos B - \\sin A\\sin B"
+  },
+  {
+    "name": "Double Angle - Sine",
+    "latex": "\\sin(2\\theta) = 2\\sin\\theta\\cos\\theta"
+  },
+  {
+    "name": "Double Angle - Cosine",
+    "latex": "\\cos(2\\theta) = \\cos^2\\theta - \\sin^2\\theta"
+  },
+  {
+    "name": "Law of Sines",
+    "latex": "\\frac{a}{\\sin A} = \\frac{b}{\\sin B} = \\frac{c}{\\sin C}"
+  },
+  {
+    "name": "Law of Cosines",
+    "latex": "c^2 = a^2 + b^2 - 2ab\\cos C"
+  },
+  {
+    "name": "Sum-to-Product (Sine)",
+    "latex": "\\sin A + \\sin B = 2\\sin\\left(\\frac{A+B}{2}\\right)\\cos\\left(\\frac{A-B}{2}\\right)"
+  },
+  {
+    "name": "Reciprocal Identity - Secant",
+    "latex": "\\sec\\theta = \\frac{1}{\\cos\\theta}"
+  }
+]
