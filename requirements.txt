@@ -1,11 +1,14 @@
 flask==3.0.3
 flask-cors==4.0.1
 gunicorn==22.0.0
+
 pix2tex==0.1.2
+transformers==4.41.2
 albumentations==1.4.24
 
 pillow==10.4.0
 matplotlib==3.9.2
 reportlab==4.2.5
+
 torch==2.3.1
 torchvision==0.18.1

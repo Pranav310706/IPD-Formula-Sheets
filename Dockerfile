@@ -29,6 +29,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # --------------------------------------------------
 COPY . .
 
+ENV NO_ALBUMENTATIONS_UPDATE=1
+
 # --------------------------------------------------
 # Cloud platforms provide PORT at runtime
 # --------------------------------------------------
