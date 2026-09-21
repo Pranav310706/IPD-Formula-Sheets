@@ -17,11 +17,22 @@ from reportlab.pdfgen import canvas
 
 app = Flask(__name__)
 
-print("Loading Pix2Tex model...")
-model = LatexOCR()
-print("Pix2Tex model loaded successfully!")
+model = None
 
-FORMULAS_DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "formulas_data.json")
+def get_model():
+    global model
+
+    if model is None:
+        print("Loading Pix2Tex model...")
+        model = LatexOCR()
+        print("Pix2Tex model loaded successfully!")
+
+    return model
+
+FORMULAS_DATA_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "formulas_data.json"
+)
 
 @app.route("/", methods=["GET"])
 def home():
@@ -30,11 +41,15 @@ def home():
         "service": "Pix2Tex Formula OCR"
     })
 
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({
+        "status": "ok"
+    }), 200
+
 @app.route("/api/formula", methods=["POST"])
 def formula_ocr():
-
     try:
-
         print("=" * 60)
         print("Content-Type:", request.content_type)
         print("Files:", request.files)
@@ -44,49 +59,32 @@ def formula_ocr():
 
         img = None
 
-        # --------------------------
-        # Accept uploaded file
-        # --------------------------
         uploaded = request.files.get("file") or request.files.get("image")
 
         if uploaded:
-
             print("Image received:", uploaded.filename)
-
             img = Image.open(uploaded.stream).convert("RGB")
 
-        # --------------------------
-        # Accept Base64 JSON
-        # --------------------------
         elif request.is_json:
-
             data = request.get_json()
 
             if data and "image_base64" in data:
-
                 image_data = data["image_base64"]
 
                 if "," in image_data:
                     image_data = image_data.split(",", 1)[1]
 
                 img_bytes = base64.b64decode(image_data)
-
                 img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
 
-        # --------------------------
-        # No image supplied
-        # --------------------------
         if img is None:
-
             return jsonify({
                 "success": False,
                 "error": "Upload using field 'file' or 'image', or send image_base64."
             }), 400
 
-        # --------------------------
-        # OCR
-        # --------------------------
-        latex = model(img)
+        pix2tex_model = get_model()
+        latex = pix2tex_model(img)
 
         return jsonify({
             "success": True,
@@ -94,36 +92,42 @@ def formula_ocr():
         })
 
     except Exception as e:
-
         return jsonify({
             "success": False,
             "error": str(e)
         }), 500
 
 
-# -----------------------------------------------------------------
-# Formula Sheet PDF Generator  (NEW)
-# -----------------------------------------------------------------
-# Renders each LaTeX formula from formulas_data.json into an image
-# with matplotlib, then lays them out as a numbered PDF with reportlab.
-# -----------------------------------------------------------------
-
 def render_latex_to_image(latex_str, fontsize=20, dpi=200):
-    """Render a LaTeX string to a transparent PNG in memory."""
     fig = plt.figure(figsize=(6, 1))
     fig.patch.set_alpha(0)
-    fig.text(0, 0.5, f"${latex_str}$", fontsize=fontsize, va="center", ha="left")
+    fig.text(
+        0,
+        0.5,
+        f"${latex_str}$",
+        fontsize=fontsize,
+        va="center",
+        ha="left"
+    )
 
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=dpi, transparent=True,
-                bbox_inches="tight", pad_inches=0.05)
+
+    fig.savefig(
+        buf,
+        format="png",
+        dpi=dpi,
+        transparent=True,
+        bbox_inches="tight",
+        pad_inches=0.05
+    )
+
     plt.close(fig)
     buf.seek(0)
+
     return buf
 
 
 def build_formula_sheet_pdf(formulas, output_path, title="Formula Sheet"):
-    """Build a numbered PDF formula sheet from a list of {name, latex} dicts."""
     page_w, page_h = A4
     c = canvas.Canvas(output_path, pagesize=A4)
 
@@ -132,53 +136,78 @@ def build_formula_sheet_pdf(formulas, output_path, title="Formula Sheet"):
 
     def draw_header():
         nonlocal y
+
         c.setFont("Helvetica-Bold", 18)
         c.drawString(margin, y, title)
+
         y -= 0.9 * cm
+
         c.setLineWidth(1)
-        c.line(margin, y, page_w - margin, y)
+        c.line(
+            margin,
+            y,
+            page_w - margin,
+            y
+        )
+
         y -= 1.0 * cm
 
     draw_header()
 
     for i, item in enumerate(formulas, start=1):
-
         img_buf = render_latex_to_image(item["latex"])
         img = ImageReader(img_buf)
+
         iw, ih = img.getSize()
+
         max_w = page_w - 2 * margin - 1 * cm
         max_h = 1.6 * cm
-        scale = min(max_w / iw, max_h / ih)
-        draw_w, draw_h = iw * scale, ih * scale
 
-        row_height = 0.6 * cm + draw_h + 0.5 * cm
+        scale = min(
+            max_w / iw,
+            max_h / ih
+        )
 
-        # start a new page if this formula won't fit
+        draw_w = iw * scale
+        draw_h = ih * scale
+
+        row_height = (
+            0.6 * cm +
+            draw_h +
+            0.5 * cm
+        )
+
         if y - row_height < margin:
             c.showPage()
             y = page_h - margin
             draw_header()
 
         c.setFont("Helvetica-Bold", 11)
-        c.drawString(margin, y, f"{i}. {item['name']}")
+        c.drawString(
+            margin,
+            y,
+            f"{i}. {item['name']}"
+        )
+
         y -= 0.6 * cm
 
-        c.drawImage(img, margin + 0.5 * cm, y - draw_h, width=draw_w, height=draw_h,
-                    preserveAspectRatio=True, mask="auto")
-        y -= (draw_h + 0.5 * cm)
+        c.drawImage(
+            img,
+            margin + 0.5 * cm,
+            y - draw_h,
+            width=draw_w,
+            height=draw_h,
+            preserveAspectRatio=True,
+            mask="auto"
+        )
+
+        y -= draw_h + 0.5 * cm
 
     c.save()
 
 
 @app.route("/api/formula-sheet", methods=["GET"])
 def formula_sheet():
-    """
-    Generates a numbered PDF formula sheet from formulas_data.json
-    and returns it as a downloadable file.
-
-    Optional query params:
-      ?title=My+Title   -> custom title on the PDF (default: "Trigonometry Formula Sheet")
-    """
     try:
         if not os.path.exists(FORMULAS_DATA_PATH):
             return jsonify({
@@ -186,16 +215,31 @@ def formula_sheet():
                 "error": f"Formula data file not found at {FORMULAS_DATA_PATH}"
             }), 404
 
-        with open(FORMULAS_DATA_PATH, "r", encoding="utf-8") as f:
+        with open(
+            FORMULAS_DATA_PATH,
+            "r",
+            encoding="utf-8"
+        ) as f:
             formulas = json.load(f)
 
         if not formulas:
-            return jsonify({"success": False, "error": "Formula data file is empty."}), 400
+            return jsonify({
+                "success": False,
+                "error": "Formula data file is empty."
+            }), 400
 
-        title = request.args.get("title", "Trigonometry Formula Sheet")
+        title = request.args.get(
+            "title",
+            "Trigonometry Formula Sheet"
+        )
 
-        output_path = os.path.join("/tmp", "formula_sheet.pdf")
-        build_formula_sheet_pdf(formulas, output_path, title=title)
+        output_path = "/tmp/formula_sheet.pdf"
+
+        build_formula_sheet_pdf(
+            formulas,
+            output_path,
+            title=title
+        )
 
         return send_file(
             output_path,
@@ -205,16 +249,17 @@ def formula_sheet():
         )
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 
-# -----------------------------
-# Start Server
-# -----------------------------
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5050))
 
     app.run(
         host="0.0.0.0",
-        port=5050,
-        debug=True
+        port=port,
+        debug=False
     )
